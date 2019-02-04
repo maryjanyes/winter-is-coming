@@ -1,0 +1,130 @@
+<html>
+<head>
+    <title>Winter is Coming</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        #CellArea {
+            display: flex;
+            width: 60%;
+            margin: auto;
+            justify-content: space-around;
+        }
+        .cell-x-y {
+            padding: 2.4rem;
+            margin: 0 0.6rem 0.6rem 0;
+        }
+        .wall-cell {
+            background-color: lightgray;
+            padding: 2.4rem;
+            margin: 0 0.6rem 0.6rem 0;
+        }
+        .zombie-player {
+            position: fixed;
+            padding: 0.6rem;
+            margin: -1.6rem 0 0 -1.6rem;
+            background-color: red;
+        }
+        .coraled {
+            background-color: whitesmoke;
+        }
+    </style>
+</head>
+<body>
+    <div id="Board">
+        <div id="PlayerHero"></div>
+        <div id="CellArea"></div>
+    </div>
+</body>
+<script>
+    var Board;
+    var BoardWorker;
+    var WorkerConnection;
+    var Zombies;
+    var Player;
+    var EventTypes;
+    var BoardCellWorker;
+    var BOARD_WALL;
+    const BOARD_CELL_AREA = document.querySelector('#CellArea');
+    const PLAYER_HERO = document.querySelector('#PlayerHero');
+
+    function startGame() {
+        function appendLastCell(doAfterAppend) {
+            const lastCell = document.createElement('div');
+            lastCell.classList = 'cell-x';
+            lastCell.id = 'lastBoardCell';
+            BOARD_CELL_AREA.appendChild(lastCell);
+            BOARD_WALL = document.querySelector('#lastBoardCell');
+            doAfterAppend(BOARD_WALL);
+        }
+        BoardWorker = new Worker('../src/BoardWorker.js');
+        WorkerConnection = new WebSocket('ws://localhost:1001', 'soap');
+        Player = new PlayerHero({
+            name: 'Random',
+            age: null
+        });
+        BoardWorker.postMessage(buildEvent(null, 'onstart'));
+        BoardWorker.onmessage = function(event) {
+            BoardCellWorker = eval(event.data)();
+            BoardCellWorker.generateBoardCells(BOARD_CELL_AREA, {
+                x: 10,
+                y: 30
+            });
+            appendLastCell((selector) => BoardCellWorker.generateWall(
+                selector,
+                30
+            ));
+        };
+        WorkerConnection.onmessage = function(event) {
+            const { zombies, eventTypes, type } = JSON.parse(event.data);
+            if (eventTypes) {
+                EventTypes = eventTypes;
+            }
+            if (type && type === EventTypes.UPDATE_ZOMBIES_CORDS) {
+                BoardCellWorker.clearCells(
+                    Zombies.map((zomby) => zomby.cords)
+                );
+            }
+            Zombies = zombies;
+            setTimeout(() => {
+                Zombies.forEach((zombie) => {
+                    const cellSelector = document.querySelector(`#cell-x-${zombie.cords.x}-y-${zombie.cords.y}`);
+                    BoardCellWorker.appendZombie(cellSelector, null);
+                });
+            }, 1000);
+        };
+    }
+
+    function PlayerHero({ name, age }) {
+        function PlayerSkills() {
+            return {
+                shortGunZombie: function(id) {
+                    WorkerConnection.send(
+                        buildEvent(id, EventTypes.SHORTGUN_ZOMBIE)
+                    )
+                },
+                getLocation: function() {
+                    return '';
+                }
+            }
+        }
+
+        return {
+            name: name,
+            age: age || 20,
+            skills: PlayerSkills()
+        };
+    }
+
+    function buildEvent(data, type) {
+
+        return JSON.stringify({
+            payload: data,
+            type: type
+        });
+    }
+
+    startGame();
+</script>
+</html>

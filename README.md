@@ -22,3 +22,6 @@ which challenge are you going to take?
 - Quest [Secret Whispering](quests/Secret_Whispering.md) - for [Network Protocol Developers](https://mysterium.network/careers/network-protocol-developer/) who knows data hiding spells
 
 **Destiny of corrupted _Westeros_ is in your hands!**
+
+### How to run solution:
+- npm start
